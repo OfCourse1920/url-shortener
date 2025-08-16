@@ -1,0 +1,93 @@
+Objective: Create a complete, self-contained URL shortener web application using Python and the Flask framework.
+Project Name: flask_url_shortener
+Core Requirements:
+1.	Technology Stack:
+o	Backend: Python 3, Flask
+o	Database: SQLite (using the Flask-SQLAlchemy extension)
+o	Frontend: HTML with Bootstrap CSS for styling.
+2.	Functionality:
+o	A homepage (/) that displays a form to submit a long URL.
+o	When a user submits a long URL, the application must:
+	Generate a unique, random 6-character alphanumeric short code.
+	Ensure the generated code does not already exist in the database.
+	Store the original URL and its corresponding short code in the database.
+	If the URL has already been shortened, return the existing short URL.
+	Display the new, full short URL (e.g., http://127.0.0.1:5000/abcdef) back to the user on the same page.
+o	When a user navigates to a short URL (e.g., /abcdef), the application must:
+	Look up the short code in the database.
+	Perform a 301 redirect to the original long URL.
+	If the short code is not found, return a 404 Not Found error.
+o	Use Flask's flash messaging system to show an error if the user submits an empty form.
+Project Structure:
+Please create the following file and directory structure:
+code Code
+downloadcontent_copyexpand_less
+    flask_url_shortener/
+|-- app.py
+|-- templates/
+|   |-- base.html
+|   |-- index.html
+|-- README.md
+  
+________________________________________
+File-by-File Implementation Instructions:
+1. app.py - The Core Flask Application
+Create the main application file with the following logic:
+•	Import necessary libraries: os, string, random, Flask, render_template, request, redirect, flash, and SQLAlchemy.
+•	Initialize the Flask app.
+•	Configure the app:
+o	Set a SECRET_KEY for flash messages.
+o	Configure the SQLALCHEMY_DATABASE_URI to use a SQLite database named urls.db.
+o	Set SQLALCHEMY_TRACK_MODIFICATIONS to False.
+•	Initialize the SQLAlchemy database instance.
+•	Define the database model Urls:
+o	id: Integer, primary key.
+o	long_url: String, cannot be null.
+o	short_code: String of length 6, must be unique and cannot be null.
+•	Implement a function generate_short_code():
+o	It should create a 6-character random string using ASCII letters and digits.
+o	It must loop and check against the database (Urls.query.filter_by(...)) to guarantee the generated code is unique before returning it.
+•	Create the main route @app.route('/', methods=['GET', 'POST']):
+o	POST request:
+	Get the long_url from the form.
+	If the URL is empty, flash an error message and redirect.
+	Check if the long_url already exists in the database. If so, display its existing short URL.
+	If not, call generate_short_code(), create a new Urls object, add it to the database session, and commit.
+	Render index.html, passing the generated short_url to the template.
+o	GET request:
+	Simply render the index.html template.
+•	Create the redirection route @app.route('/<short_code>'):
+o	Query the Urls table for the entry matching the short_code. Use first_or_404() to handle non-existent codes automatically.
+o	Redirect to the long_url from the database entry.
+•	(Optional but good practice) Create a shell context processor to easily access db and Urls in the flask shell.
+2. templates/base.html - The Base HTML Template
+This file will be the main layout.
+•	Use standard HTML5 boilerplate.
+•	Include the Bootstrap 4 or 5 CSS from a CDN for styling.
+•	Add some simple custom CSS for centering the content.
+•	Define a Jinja2 block for the title: {% block title %}{% endblock %}.
+•	Define a Jinja2 block for the main content inside a <div class="container">: {% block content %}{% endblock %}.
+3. templates/index.html - The Homepage Template
+This file will render the user-facing page.
+•	It must extend base.html.
+•	Override the title block.
+•	In the content block, add:
+o	A heading, e.g., "URL Shortener".
+o	A section to render flashed messages from Flask (get_flashed_messages()).
+o	An HTML form with method="POST".
+o	The form should contain a single URL input field (<input type="url" name="long_url">) and a submit button.
+o	Below the form, add a conditional Jinja2 block ({% if short_url %}) to display the result. Inside, show the short_url as a clickable link.
+4. README.md - Setup and Run Instructions
+Create a README file explaining how to set up and run the project. Include the following sections:
+•	Prerequisites: Python 3 and pip.
+•	Setup:
+1.	Clone the repository.
+2.	Create and activate a virtual environment.
+3.	Install dependencies: pip install Flask Flask-SQLAlchemy.
+•	Database Initialization:
+1.	Explain that the database needs to be created first.
+2.	Provide the commands: flask shell, then from app import db, db.create_all().
+•	Running the Application:
+1.	Provide the command: flask run.
+2.	State the default URL: http://127.0.0.1:5000.
+

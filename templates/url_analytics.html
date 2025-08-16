@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics for {{ url_entry.custom_alias or url_entry.short_code }} - URL Shortener{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-6">
+            <i class="fas fa-chart-line text-primary me-3"></i>Analytics
+        </h1>
+        <div>
+            <a href="{{ url_for('manage_urls') }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-list me-2"></i>Manage URLs
+            </a>
+            <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-outline-info">
+                <i class="fas fa-dashboard me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- URL Info Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-link me-2"></i>URL Information
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Short URL</h6>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">{{ request.url_root }}</span>
+                        <input type="text" class="form-control" value="{{ url_entry.custom_alias or url_entry.short_code }}" readonly>
+                        <button class="btn btn-outline-secondary" onclick="copyToClipboard('{{ request.url_root }}{{ url_entry.custom_alias or url_entry.short_code }}')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Status</h6>
+                    <div class="mb-3">
+                        {% if not url_entry.is_active %}
+                        <span class="badge bg-secondary fs-6">Inactive</span>
+                        {% elif url_entry.is_expired %}
+                        <span class="badge bg-warning text-dark fs-6">Expired</span>
+                        {% else %}
+                        <span class="badge bg-success fs-6">Active</span>
+                        {% endif %}
+                        {% if url_entry.custom_alias %}
+                        <span class="badge bg-info fs-6 ms-2">Custom Alias</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <h6>Long URL</h6>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" value="{{ url_entry.long_url }}" readonly>
+                <a href="{{ url_entry.long_url }}" target="_blank" class="btn btn-outline-primary">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+
+            {% if url_entry.description %}
+            <h6>Description</h6>
+            <p class="text-muted">{{ url_entry.description }}</p>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-4">
+                    <h6>Created</h6>
+                    <p class="text-muted">{{ url_entry.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                </div>
+                {% if url_entry.expires_at %}
+                <div class="col-md-4">
+                    <h6>Expires</h6>
+                    <p class="text-muted">{{ url_entry.expires_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                </div>
+                {% endif %}
+                <div class="col-md-4">
+                    <h6>Total Clicks</h6>
+                    <p class="text-primary fs-4 fw-bold mb-0">{{ total_clicks }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-mouse-pointer fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ total_clicks }}</h3>
+                    <p class="mb-0">Total Clicks</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-day fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ daily_clicks|length }}</h3>
+                    <p class="mb-0">Active Days</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ "%.1f"|format(total_clicks / daily_clicks|length if daily_clicks|length > 0 else 0) }}</h3>
+                    <p class="mb-0">Avg. Daily Clicks</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if daily_clicks %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-area me-2"></i>Daily Clicks (Last 30 Days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="clicksChart" width="400" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Clicks -->
+    {% if clicks %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-history me-2"></i>Recent Clicks (Last 100)
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>IP Address</th>
+                        <th>User Agent</th>
+                        <th>Referer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for click in clicks %}
+                    <tr>
+                        <td>
+                            <small>{{ click.clicked_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                        </td>
+                        <td>
+                            <code>{{ click.ip_address or 'Unknown' }}</code>
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 300px;" title="{{ click.user_agent }}">
+                                <small>{{ click.user_agent[:50] }}{% if click.user_agent and click.user_agent|length > 50 %}...{% endif %}</small>
+                            </div>
+                        </td>
+                        <td>
+                            {% if click.referer %}
+                            <div class="text-truncate" style="max-width: 200px;" title="{{ click.referer }}">
+                                <small>{{ click.referer[:30] }}{% if click.referer|length > 30 %}...{% endif %}</small>
+                            </div>
+                            {% else %}
+                            <small class="text-muted">Direct</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center">
+            <i class="fas fa-mouse-pointer text-muted mb-3" style="font-size: 3rem;"></i>
+            <h5 class="card-title">No Clicks Yet</h5>
+            <p class="card-text">This URL hasn't been clicked yet. Share it to start collecting analytics!</p>
+            <button class="btn btn-primary" onclick="copyToClipboard('{{ request.url_root }}{{ url_entry.custom_alias or url_entry.short_code }}')">
+                <i class="fas fa-copy me-2"></i>Copy URL to Share
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if daily_clicks %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('clicksChart').getContext('2d');
+const clicksChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [{% for date, clicks in daily_clicks %}'{{ date.strftime('%m/%d') }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Clicks',
+            data: [{% for date, clicks in daily_clicks %}{{ clicks }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Daily Click Activity'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success feedback
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+        }, 2000);
+    }).catch(function() {
+        alert('Failed to copy to clipboard');
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - URL Shortener{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-5">
+            <i class="fas fa-chart-bar text-primary me-3"></i>Analytics Dashboard
+        </h1>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-home me-2"></i>Back to Home
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total URLs</h6>
+                            <h2 class="mb-0">{{ total_urls }}</h2>
+                        </div>
+                        <i class="fas fa-link fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Clicks</h6>
+                            <h2 class="mb-0">{{ total_clicks }}</h2>
+                        </div>
+                        <i class="fas fa-mouse-pointer fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Active URLs</h6>
+                            <h2 class="mb-0">{{ active_urls }}</h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Avg. Clicks</h6>
+                            <h2 class="mb-0">{{ "%.1f"|format(total_clicks / total_urls if total_urls > 0 else 0) }}</h2>
+                        </div>
+                        <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    {% if daily_clicks %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-area me-2"></i>Daily Clicks (Last 7 Days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="clicksChart" width="400" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tables -->
+    <div class="row">
+        <!-- Popular URLs -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-fire text-danger me-2"></i>Most Popular URLs
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if popular_urls %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Short URL</th>
+                                    <th>Clicks</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for url, click_count in popular_urls %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('redirect_to_url', identifier=url.custom_alias or url.short_code) }}" target="_blank" class="text-decoration-none">
+                                            {{ url.custom_alias or url.short_code }}
+                                        </a>
+                                        {% if url.description %}
+                                        <br><small class="text-muted">{{ url.description[:30] }}{% if url.description|length > 30 %}...{% endif %}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge bg-primary">{{ click_count }}</span></td>
+                                    <td>
+                                        <a href="{{ url_for('url_analytics', url_id=url.id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-chart-line"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">No data available yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent URLs -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock text-info me-2"></i>Recently Created URLs
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_urls %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Short URL</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for url in recent_urls %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('redirect_to_url', identifier=url.custom_alias or url.short_code) }}" target="_blank" class="text-decoration-none">
+                                            {{ url.custom_alias or url.short_code }}
+                                        </a>
+                                        {% if url.description %}
+                                        <br><small class="text-muted">{{ url.description[:30] }}{% if url.description|length > 30 %}...{% endif %}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td><small class="text-muted">{{ url.created_at.strftime('%m/%d %H:%M') }}</small></td>
+                                    <td>
+                                        <a href="{{ url_for('url_analytics', url_id=url.id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-chart-line"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">No URLs created yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Quick Actions</h5>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Create New Short URL
+                        </a>
+                        <a href="{{ url_for('manage_urls') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-cog me-2"></i>Manage All URLs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if daily_clicks %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('clicksChart').getContext('2d');
+const clicksChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [{% for date, clicks in daily_clicks %}'{{ date.strftime('%m/%d') }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Clicks',
+            data: [{% for date, clicks in daily_clicks %}{{ clicks }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Daily Click Activity'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
